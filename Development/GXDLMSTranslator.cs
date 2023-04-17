@@ -47,6 +47,7 @@ using Gurux.DLMS.Plc.Enums;
 using Gurux.DLMS.Objects.Enums;
 using Gurux.DLMS.ASN;
 using Gurux.DLMS.Ecdsa;
+using System.Linq;
 
 namespace Gurux.DLMS
 {
@@ -1294,6 +1295,21 @@ namespace Gurux.DLMS
             }
         }
 
+
+
+
+        static public string Converte_Binario(string uhuhbuyguyg, int posicao_inicial, int tamanho)
+        {
+            byte[] byte_array = Enumerable.Range(0, uhuhbuyguyg.Length).Where(x => x % 2 == 0).Select(x => Convert.ToByte(uhuhbuyguyg.Substring(x, 2), 16)).ToArray();
+            List<string> vs = new List<string>();
+            foreach (var item in byte_array)
+            {
+                vs.Add(Convert.ToString(item, 2).PadLeft(8, '0'));
+            }
+            string ver = String.Join("", vs.ToArray());
+            return String.Join("", vs.ToArray());
+        }
+
         /// <summary>
         /// Convert message to xml.
         /// </summary>
@@ -1333,23 +1349,165 @@ namespace Gurux.DLMS
                         //settings.SourceSystemTitle
                         if (!PduOnly)
                         {
-                            int logical, physical;
                             xml.AppendLine("<HDLC len=\"" + (data.PacketLength - offset).ToString("X") + "\" >");
-                            GetLogicalAndPhysicalAddress(settings.ServerAddress, out logical, out physical);
-                            if (logical != 0)
+                            //xml.AppendLine("<TargetAddress Value=\"" + settings.ServerAddress.ToString("X") + "\" />");
+                            //xml.AppendLine("<SourceAddress Value=\"" + settings.ClientAddress.ToString("X") + "\" />");
+
+                            string complete_frame = msg.Message.ToString().Replace(" ", "");
+
+                            int position_first_byte = 6;
+                            int add_position = 0;
+                            string first_byte = complete_frame.Substring(position_first_byte + add_position, 2);
+                            string first_byte_bin = Converte_Binario(first_byte, 0, 0);
+                            string dest_address_bin = "";
+                            string dest_address = "";
+                            dest_address_bin += first_byte_bin.Substring(0, 7);
+                            if (first_byte_bin.Last() != '1')
                             {
-                                xml.AppendComment("Logical address:" + logical.ToString() + ", Physical address:" + physical.ToString());
+                                add_position += 2;
+                                first_byte = complete_frame.Substring(position_first_byte + add_position, 2);
+                                first_byte_bin = Converte_Binario(first_byte, 0, 0);
+                                dest_address_bin += first_byte_bin.Substring(0, 7);
+                                if (first_byte_bin.Last() != '1')
+                                {
+                                    add_position += 2;
+                                    first_byte = complete_frame.Substring(position_first_byte + add_position, 2);
+                                    first_byte_bin = Converte_Binario(first_byte, 0, 0);
+                                    dest_address_bin += first_byte_bin.Substring(0, 7);
+                                    if (first_byte_bin.Last() != '1')
+                                    {
+                                        add_position += 2;
+                                        first_byte = complete_frame.Substring(position_first_byte + add_position, 2);
+                                        first_byte_bin = Converte_Binario(first_byte, 0, 0);
+                                        dest_address_bin += first_byte_bin.Substring(0, 7);
+                                    }
+                                }
                             }
-                            xml.AppendLine("<TargetAddress Value=\"" + settings.ServerAddress.ToString("X") + "\" />");
-                            GetLogicalAndPhysicalAddress(settings.ClientAddress, out logical, out physical);
-                            if (logical != 0)
+                            string dest_address_lower = "";
+                            string dest_address_upper = "";
+                            if (dest_address_bin.Length > 8)
                             {
-                                xml.AppendComment("Logical address:" + logical.ToString() + ", Physical address:" + physical.ToString());
+                                dest_address_upper = Convert.ToUInt32(dest_address_bin.Substring(0, dest_address_bin.Length / 2), 2).ToString();
+                                dest_address_lower = Convert.ToUInt32(dest_address_bin.Substring(dest_address_bin.Length / 2), 2).ToString();
                             }
-                            xml.AppendLine("<SourceAddress Value=\"" + settings.ClientAddress.ToString("X") + "\" />");
+                            else
+                            {
+                                dest_address_upper = Convert.ToUInt32(dest_address_bin, 2).ToString();
+                            }
+                            xml.AppendLine($"<DestAddr Upper=\"{dest_address_upper}\" Lower=\"{dest_address_lower}\" />");
+                            dest_address = Convert.ToUInt32(dest_address_bin, 2).ToString();
+
+
+
+
+
+                            add_position += 2;
+                            string src_address_bin = "";
+                            string src_address = "";
+                            first_byte = complete_frame.Substring(position_first_byte + add_position, 2);
+                            first_byte_bin = Converte_Binario(first_byte, 0, 0);
+                            src_address_bin += first_byte_bin.Substring(0, 7);
+
+                            if (first_byte_bin.Last() != '1')
+                            {
+                                add_position += 2;
+                                first_byte = complete_frame.Substring(position_first_byte + add_position, 2);
+                                first_byte_bin = Converte_Binario(first_byte, 0, 0);
+                                src_address_bin += first_byte_bin.Substring(0, 7);
+                                if (first_byte_bin.Last() != '1')
+                                {
+                                    add_position += 2;
+                                    first_byte = complete_frame.Substring(position_first_byte + add_position, 2);
+                                    first_byte_bin = Converte_Binario(first_byte, 0, 0);
+                                    src_address_bin += first_byte_bin.Substring(0, 7);
+                                    if (first_byte_bin.Last() != '1')
+                                    {
+                                        add_position += 2;
+                                        first_byte = complete_frame.Substring(position_first_byte + add_position, 2);
+                                        first_byte_bin = Converte_Binario(first_byte, 0, 0);
+                                        src_address_bin += first_byte_bin.Substring(0, 7);
+                                    }
+                                }
+
+                            }
+                            src_address = Convert.ToUInt32(src_address_bin, 2).ToString();
+                            string src_address_lower = "";
+                            string src_address_upper = "";
+                            if (src_address_bin.Length > 8)
+                            {
+                                src_address_upper = Convert.ToUInt32(src_address_bin.Substring(0, src_address_bin.Length / 2), 2).ToString();
+                                src_address_lower = Convert.ToUInt32(src_address_bin.Substring(src_address_bin.Length / 2), 2).ToString();
+                            }
+                            else
+                            {
+                                src_address_upper = Convert.ToUInt32(src_address_bin, 2).ToString();
+                            }
+                            xml.AppendLine($"<SrcAddr Upper=\"{src_address_upper}\" Lower=\"{src_address_lower}\" />");
+
+
+
+
                             //Check frame.
                             CheckFrame(data.FrameId, xml);
                             xml.AppendLine("<FrameType Value=\"" + data.FrameId.ToString("X") + "\" />");
+                            string valor_binario = Converte_Binario(data.FrameId.ToString("X"), 0, 0);
+                            string NR_type = Convert.ToUInt32(valor_binario.Substring(0, 3), 2).ToString();
+                            string PF = Convert.ToUInt32(valor_binario.Substring(3, 1), 2).ToString();
+                            string NS = Convert.ToUInt32(valor_binario.Substring(4, 3), 2).ToString();
+                            string bit_0 = Convert.ToUInt32(valor_binario.Substring(7, 1), 2).ToString();
+                            string bit_1 = Convert.ToUInt32(valor_binario.Substring(6, 1), 2).ToString();
+                            string type1 = Convert.ToUInt32(valor_binario.Substring(4, 2), 2).ToString();
+                            string type2 = Convert.ToUInt32(valor_binario.Substring(0, 3), 2).ToString();
+
+                            if (bit_0 == "0")
+                            {
+                                string frame_type = "I";
+                                xml.AppendLine($"<FrameType Frame=\"{frame_type}\" NR=\"{NR_type}\" PF=\"{PF}\" NS=\"{NS}\" />");
+
+                            }
+                            if (bit_0 == "1" && bit_1 == "0")
+                            {
+                                string frame_type = "S";
+                                xml.AppendLine($"<FrameType Frame=\"{frame_type}\" NR=\"{NR_type}\" PF=\"{PF}\" type=\"{type1}\" />");
+                                if (type1 == "0")
+                                {
+                                    xml.AppendLine($"<Command Name=\"RR\" />");
+                                }
+                                if (type1 == "1")
+                                {
+                                    xml.AppendLine($"<Command Name=\"RNR\" />");
+                                }
+                            }
+                            if (bit_0 == "1" && bit_1 == "1")
+                            {
+                                string frame_type = "U";
+                                xml.AppendLine($"<FrameType Frame=\"{frame_type}\" type_1=\"{type1}\" PF=\"{PF}\" type_2=\"{type2}\" />");
+                                if (type1 == "0" && type2 == "4")
+                                {
+                                    xml.AppendLine($"<Command Name=\"SNRM\" />");
+                                }
+                                if (type1 == "0" && type2 == "2")
+                                {
+                                    xml.AppendLine($"<Command Name=\"DISC\" />");
+                                }
+                                if (type1 == "0" && type2 == "3")
+                                {
+                                    xml.AppendLine($"<Command Name=\"UA\" />");
+                                }
+                                if (type1 == "3" && type2 == "0")
+                                {
+                                    xml.AppendLine($"<Command Name=\"DM\" />");
+                                }
+                                if (type1 == "1" && type2 == "4")
+                                {
+                                    xml.AppendLine($"<Command Name=\"FRMR\" />");
+                                }
+                                if (type1 == "1" && type2 == "0")
+                                {
+                                    xml.AppendLine($"<Command Name=\"UI\" />");
+                                }
+                            }
+
 
                         }
                         if (data.Data.Size == 0)
@@ -2139,6 +2297,8 @@ namespace Gurux.DLMS
                     case (byte)Command.DedSetResponse:
                     case (byte)Command.DedMethodRequest:
                     case (byte)Command.DedMethodResponse:
+                    case (byte)Command.DedEventNotification:
+                    case (byte)Command.GloEventNotification:
                     case (byte)Command.GloConfirmedServiceError:
                     case (byte)Command.DedConfirmedServiceError:
                         if (settings.Cipher != null && Comments)
@@ -2165,7 +2325,7 @@ namespace Gurux.DLMS
                                     if ((cmd == (byte)Command.DedGetRequest || cmd == (byte)Command.DedSetRequest ||
                                         cmd == (byte)Command.DedReadResponse || cmd == (byte)Command.DedWriteResponse ||
                                         cmd == (byte)Command.DedGetResponse || cmd == (byte)Command.DedSetResponse ||
-                                        cmd == (byte)Command.DedMethodRequest || cmd == (byte)Command.DedMethodResponse) &&
+                                        cmd == (byte)Command.DedMethodRequest || cmd == (byte)Command.DedMethodResponse || cmd == (byte)Command.DedEventNotification) &&
                                         settings.Cipher.DedicatedKey != null && settings.Cipher.DedicatedKey.Length != 0)
                                     {
                                         p = new AesGcmParameter(settings, st, settings.Cipher.DedicatedKey, settings.Cipher.AuthenticationKey);
